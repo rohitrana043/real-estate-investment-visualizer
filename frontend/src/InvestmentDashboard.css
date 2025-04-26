@@ -1,0 +1,165 @@
+.investment-dashboard {
+  padding: 20px;
+  background-color: #f5f5f5;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.dashboard-title {
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: #333;
+  border-bottom: 2px solid #4caf50;
+  padding-bottom: 10px;
+}
+
+.dashboard-section {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.metric-selector,
+.city-selector {
+  display: flex;
+  align-items: center;
+}
+
+.metric-selector label,
+.city-selector label {
+  margin-right: 8px;
+  font-size: 14px;
+  color: #666;
+}
+
+.metric-selector select,
+.city-selector select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+}
+
+.dashboard-row {
+  display: flex;
+  margin: 0 -10px;
+  margin-bottom: 20px;
+}
+
+.dashboard-card {
+  flex: 1;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  margin: 0 10px;
+}
+
+.dashboard-card h3 {
+  font-size: 16px;
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.dashboard-card.full-width {
+  flex: 2;
+}
+
+.dashboard-summary {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+}
+
+.dashboard-summary h3 {
+  font-size: 18px;
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #4caf50;
+}
+
+.dashboard-summary ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.dashboard-summary li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+/* Dark theme support */
+.dark-theme .investment-dashboard {
+  background-color: #121212;
+  color: #e0e0e0;
+}
+
+.dark-theme .dashboard-title {
+  color: #e0e0e0;
+  border-bottom-color: #4caf50;
+}
+
+.dark-theme .dashboard-section,
+.dark-theme .dashboard-card,
+.dark-theme .dashboard-summary {
+  background-color: #1e1e1e;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme .section-header h3,
+.dark-theme .dashboard-card h3 {
+  color: #e0e0e0;
+  border-bottom-color: #333;
+}
+
+.dark-theme .dashboard-summary h3 {
+  color: #81c784;
+}
+
+.dark-theme .metric-selector select,
+.dark-theme .city-selector select {
+  background-color: #333;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+/* Responsive layouts */
+@media (max-width: 768px) {
+  .dashboard-row {
+    flex-direction: column;
+  }
+
+  .dashboard-card {
+    margin-bottom: 20px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metric-selector,
+  .city-selector {
+    margin-top: 10px;
+  }
+}
