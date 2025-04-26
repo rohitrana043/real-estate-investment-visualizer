@@ -14,7 +14,10 @@ import FilterDialog from './components/FilterDialog';
 import BottomNav from './components/BottomNav';
 import Settings from './components/Settings';
 import InvestmentDashboard from './components/InvestmentDashboard';
-// import SimpleDashboard from './components/SimpleDashboard';
+import Portfolio from './components/Portfolio';
+import Reports from './components/Reports';
+import FavoritesModal from './components/FavoritesModal';
+import MetricSelector from './components/MetricSelector';
 import { fetchProperties, fetchLocationScores } from './services/api';
 
 function App() {
@@ -36,8 +39,9 @@ function App() {
     city: 'Toronto', // Default to Toronto
   });
   const [selectedProperty, setSelectedProperty] = useState(null);
-  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [appSettings, setAppSettings] = useState({
     theme: 'light',
     currency: 'CAD',
@@ -48,6 +52,55 @@ function App() {
     notifyNewListings: true,
     autoRefreshMinutes: 30,
   });
+
+  // Add favorites state
+  const [favorites, setFavorites] = useState([]);
+  const [showFavorites, setShowFavorites] = useState(false);
+
+  // Check if the screen is mobile-sized
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    // Initial check
+    checkIfMobile();
+
+    // Add event listener for window resize
+    window.addEventListener('resize', checkIfMobile);
+
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
+
+  // On mobile, sidebar should be hidden by default
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarVisible(false);
+    } else {
+      setSidebarVisible(true);
+    }
+  }, [isMobile]);
+
+  // Load settings and favorites from localStorage
+  useEffect(() => {
+    // Load settings
+    const savedSettings = localStorage.getItem('propertyMapSettings');
+    if (savedSettings) {
+      const parsedSettings = JSON.parse(savedSettings);
+      setAppSettings(parsedSettings);
+
+      // Apply theme
+      document.body.className =
+        parsedSettings.theme === 'dark' ? 'dark-theme' : '';
+    }
+
+    // Load favorites
+    const savedFavorites = localStorage.getItem('propertyFavorites');
+    if (savedFavorites) {
+      setFavorites(JSON.parse(savedFavorites));
+    }
+  }, []);
 
   // Load properties and location scores
   useEffect(() => {
@@ -72,6 +125,16 @@ function App() {
     loadData();
   }, []);
 
+  // Apply theme effect
+  useEffect(() => {
+    // Apply theme to body element
+    if (appSettings.theme === 'dark') {
+      document.body.classList.add('dark-theme');
+    } else {
+      document.body.classList.remove('dark-theme');
+    }
+  }, [appSettings.theme]);
+
   // Filter properties based on current filters
   const filteredProperties = properties.filter((property) => {
     return (
@@ -86,6 +149,31 @@ function App() {
       (filters.city === 'All' || property.city === filters.city)
     );
   });
+
+  // Favorites functions
+  const addToFavorites = (property) => {
+    const updatedFavorites = [...favorites, property];
+    setFavorites(updatedFavorites);
+    localStorage.setItem('propertyFavorites', JSON.stringify(updatedFavorites));
+  };
+
+  const removeFromFavorites = (propertyId) => {
+    const updatedFavorites = favorites.filter((prop) => prop.id !== propertyId);
+    setFavorites(updatedFavorites);
+    localStorage.setItem('propertyFavorites', JSON.stringify(updatedFavorites));
+  };
+
+  const isPropertyFavorite = (propertyId) => {
+    return favorites.some((prop) => prop.id === propertyId);
+  };
+
+  const toggleFavorite = (property) => {
+    if (isPropertyFavorite(property.id)) {
+      removeFromFavorites(property.id);
+    } else {
+      addToFavorites(property);
+    }
+  };
 
   const handleFilterChange = (newFilters) => {
     setFilters({ ...filters, ...newFilters });
@@ -108,6 +196,12 @@ function App() {
     setSidebarVisible(!sidebarVisible);
   };
 
+  const closeSidebar = () => {
+    if (isMobile) {
+      setSidebarVisible(false);
+    }
+  };
+
   const handleSettingsSave = (newSettings) => {
     setAppSettings(newSettings);
     // Apply settings to the app
@@ -119,7 +213,14 @@ function App() {
     }
 
     // Apply theme
-    document.body.className = newSettings.theme === 'dark' ? 'dark-theme' : '';
+    if (newSettings.theme === 'dark') {
+      document.body.classList.add('dark-theme');
+    } else {
+      document.body.classList.remove('dark-theme');
+    }
+
+    // Save settings to localStorage
+    localStorage.setItem('propertyMapSettings', JSON.stringify(newSettings));
   };
 
   // Main map view component
@@ -133,11 +234,16 @@ function App() {
           onPropertySelect={handlePropertySelect}
           selectedProperty={selectedProperty}
           showHeatmap={appSettings.showHeatmap}
+          isMobile={isMobile}
+        />
+
+        <MetricSelector
+          activeMetric={activeMetric}
+          onMetricChange={handleMetricChange}
         />
 
         <FilterBar
           activeMetric={activeMetric}
-          onMetricChange={handleMetricChange}
           onFilterClick={toggleFilterDialog}
         />
 
@@ -150,14 +256,27 @@ function App() {
         )}
       </div>
 
-      {sidebarVisible && (
+      {/* Sidebar overlay for mobile */}
+      {isMobile && sidebarVisible && (
+        <div
+          className={`sidebar-overlay ${sidebarVisible ? 'visible' : ''}`}
+          onClick={closeSidebar}
+        />
+      )}
+
+      {/* Sidebar with conditional classes for mobile animation */}
+      {(sidebarVisible || !isMobile) && (
         <Sidebar
           properties={filteredProperties}
           selectedProperty={selectedProperty}
           onPropertySelect={handlePropertySelect}
-          onClose={() => setSidebarVisible(false)}
+          onClose={closeSidebar}
           locationScores={locationScores}
           activeMetric={activeMetric}
+          favorites={favorites}
+          toggleFavorite={toggleFavorite}
+          isPropertyFavorite={isPropertyFavorite}
+          className={isMobile ? 'visible' : ''}
         />
       )}
     </>
@@ -178,30 +297,11 @@ function App() {
           properties={properties}
           locationScores={locationScores}
           view={appSettings.dashboardView}
+          isMobile={isMobile}
         />
       )}
     </div>
   );
-
-  /**
-  const DashboardView = () => (
-    <div className="dashboard-container">
-      {loading ? (
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Loading data...</p>
-        </div>
-      ) : error ? (
-        <div className="error-message">{error}</div>
-      ) : (
-        <SimpleDashboard
-          properties={properties}
-          locationScores={locationScores}
-        />
-      )}
-    </div>
-  );
-  */
 
   return (
     <Router>
@@ -213,20 +313,26 @@ function App() {
         <Header
           toggleSidebar={toggleSidebar}
           openSettings={() => setShowSettings(true)}
+          openFavorites={() => setShowFavorites(true)}
+          isMobile={isMobile}
         />
 
         <div className="content">
           <Routes>
             <Route path="/" element={<MapView />} />
             <Route path="/dashboard" element={<DashboardView />} />
+            <Route
+              path="/portfolio"
+              element={<Portfolio isMobile={isMobile} />}
+            />
+            <Route path="/reports" element={<Reports isMobile={isMobile} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
 
         <BottomNav
-          activeMetric={activeMetric}
-          onMetricChange={handleMetricChange}
           openSettings={() => setShowSettings(true)}
+          openFavorites={() => setShowFavorites(true)}
         />
 
         <Settings
@@ -234,6 +340,16 @@ function App() {
           onClose={() => setShowSettings(false)}
           onSave={handleSettingsSave}
           initialSettings={appSettings}
+        />
+
+        <FavoritesModal
+          isOpen={showFavorites}
+          onClose={() => setShowFavorites(false)}
+          favorites={favorites}
+          onRemove={removeFromFavorites}
+          onSelect={handlePropertySelect}
+          locationScores={locationScores}
+          isMobile={isMobile}
         />
       </div>
     </Router>

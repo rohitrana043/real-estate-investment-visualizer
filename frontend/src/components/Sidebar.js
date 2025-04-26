@@ -10,6 +10,10 @@ const Sidebar = ({
   onClose,
   locationScores,
   activeMetric,
+  favorites = [],
+  toggleFavorite = () => {},
+  isPropertyFavorite = () => false,
+  className = '',
 }) => {
   const [activeTab, setActiveTab] = useState('opportunities');
   const [showTorontoMetrics, setShowTorontoMetrics] = useState(false);
@@ -32,22 +36,35 @@ const Sidebar = ({
   const renderContent = () => {
     if (selectedProperty) {
       const locationScore = findLocationScore(selectedProperty.address);
+      const favorite = isPropertyFavorite(selectedProperty.id);
 
       // Show property details
       return (
         <div className="sidebar-section">
           <div className="sidebar-header">
             <h3 className="sidebar-title">House Information</h3>
-            <button
-              className="close-button"
-              onClick={() => onPropertySelect(null)}
-            >
-              ×
-            </button>
+            <div className="sidebar-actions">
+              <button
+                className={`favorite-button ${favorite ? 'active' : ''}`}
+                onClick={() => toggleFavorite(selectedProperty)}
+                title={favorite ? 'Remove from favorites' : 'Add to favorites'}
+                aria-label={
+                  favorite ? 'Remove from favorites' : 'Add to favorites'
+                }
+              >
+                <i className={`fas fa-heart ${favorite ? 'active' : ''}`}></i>
+              </button>
+              <button
+                className="close-button"
+                onClick={() => onPropertySelect(null)}
+                aria-label="Close property details"
+              >
+                ×
+              </button>
+            </div>
           </div>
 
           <img
-            // src={selectedProperty.imageUrl || '/placeholder-property.jpg'}
             src="/placeholder-property.jpg"
             alt={selectedProperty.address}
             className="property-image"
@@ -100,46 +117,77 @@ const Sidebar = ({
         <div className="sidebar-section">
           <div className="sidebar-header">
             <h3 className="sidebar-title">Opportunities</h3>
-            <button className="close-button" onClick={onClose}>
+            <button
+              className="close-button"
+              onClick={onClose}
+              aria-label="Close sidebar"
+            >
               ×
             </button>
           </div>
 
-          {properties.map((property) => (
-            <div
-              key={property.id}
-              className="property-card"
-              onClick={() => onPropertySelect(property)}
-            >
-              <img
-                // src={selectedProperty.imageUrl || '/placeholder-property.jpg'}
-                src="/placeholder-property.jpg"
-                alt={property.address}
-                className="property-image"
-              />
+          {properties.map((property) => {
+            const favorite = isPropertyFavorite(property.id);
 
-              <div className="property-details">
-                <div className="property-price">
-                  {formatPrice(property.listPrice)}
-                  <span
-                    className={`property-status status-${property.status.toLowerCase()}`}
-                  >
-                    {property.status}
-                  </span>
-                </div>
+            return (
+              <div key={property.id} className="property-card">
+                <img
+                  src="/placeholder-property.jpg"
+                  alt={property.address}
+                  className="property-image"
+                  onClick={() => onPropertySelect(property)}
+                />
 
-                <div className="property-info">
-                  {property.bedrooms} beds | {property.bathrooms} baths |{' '}
-                  {property.squareFeet} sq ft
-                </div>
+                <div className="property-details">
+                  <div className="property-price">
+                    {formatPrice(property.listPrice)}
+                    <span
+                      className={`property-status status-${property.status.toLowerCase()}`}
+                    >
+                      {property.status}
+                    </span>
+                  </div>
 
-                <div className="property-address">
-                  {property.address}, {property.city}, {property.state}{' '}
-                  {property.zipCode}
+                  <div className="property-info">
+                    {property.bedrooms} beds | {property.bathrooms} baths |{' '}
+                    {property.squareFeet} sq ft
+                  </div>
+
+                  <div className="property-address">
+                    {property.address}, {property.city}, {property.state}{' '}
+                    {property.zipCode}
+                  </div>
+
+                  <div className="property-actions">
+                    <button
+                      className="view-button"
+                      onClick={() => onPropertySelect(property)}
+                    >
+                      View Details
+                    </button>
+
+                    <button
+                      className={`favorite-button ${favorite ? 'active' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(property);
+                      }}
+                      title={
+                        favorite ? 'Remove from favorites' : 'Add to favorites'
+                      }
+                      aria-label={
+                        favorite ? 'Remove from favorites' : 'Add to favorites'
+                      }
+                    >
+                      <i
+                        className={`fas fa-heart ${favorite ? 'active' : ''}`}
+                      ></i>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {properties.length === 0 && (
             <div className="no-results">
@@ -180,28 +228,7 @@ const Sidebar = ({
     }
   };
 
-  // For score display
-  const renderLocationScoreSection = () => {
-    if (!selectedProperty) return null;
-
-    const locationScore = findLocationScore(selectedProperty.address);
-    if (!locationScore) return null;
-
-    return (
-      <div className="sidebar-section">
-        <div className="sidebar-header">
-          <h3 className="sidebar-title">Location Scores</h3>
-        </div>
-
-        <LocationScoreDisplay
-          locationScore={locationScore}
-          activeMetric={activeMetric}
-        />
-      </div>
-    );
-  };
-
-  return <div className="sidebar">{renderContent()}</div>;
+  return <div className={`sidebar ${className}`}>{renderContent()}</div>;
 };
 
 export default Sidebar;

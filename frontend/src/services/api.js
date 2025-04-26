@@ -1,4 +1,6 @@
 import axios from 'axios';
+import mockProperties from '../mock/mock_properties.json';
+import mockLocationScores from '../mock/mock_location_scores.json';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -10,9 +12,20 @@ const apiClient = axios.create({
   },
 });
 
+// Check if we're in mock mode
+const isMockMode = () => {
+  return process.env.REACT_APP_MOCK === 'true';
+};
+
 // Properties API calls
 export const fetchProperties = async (filters = {}) => {
   try {
+    // If in mock mode, return mock data
+    if (isMockMode()) {
+      console.log('Using mock property data');
+      return mockProperties;
+    }
+
     const params = new URLSearchParams();
 
     // Add filters to query params if they exist
@@ -26,22 +39,41 @@ export const fetchProperties = async (filters = {}) => {
     return response.data;
   } catch (error) {
     console.error('Error fetching properties:', error);
-    throw error;
+    // Fall back to mock data if request fails
+    console.log('Falling back to mock property data');
+    return mockProperties;
   }
 };
 
 export const fetchPropertyById = async (id) => {
   try {
+    // If in mock mode, find the property in mock data
+    if (isMockMode()) {
+      console.log('Using mock property data for single property');
+      const property = mockProperties.find((p) => p.id === id);
+      if (property) return property;
+      throw new Error('Property not found in mock data');
+    }
+
     const response = await apiClient.get(`/properties/${id}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching property with id ${id}:`, error);
+    // Try to find the property in mock data as fallback
+    const property = mockProperties.find((p) => p.id === id);
+    if (property) return property;
     throw error;
   }
 };
 
 export const fetchPropertiesInBounds = async (bounds) => {
   try {
+    // If in mock mode, return all mock data
+    if (isMockMode()) {
+      console.log('Using mock property data for bounds');
+      return mockProperties;
+    }
+
     const { southLat, northLat, westLng, eastLng } = bounds;
     const response = await apiClient.get('/properties/bounds', {
       params: { southLat, northLat, westLng, eastLng },
@@ -49,19 +81,21 @@ export const fetchPropertiesInBounds = async (bounds) => {
     return response.data;
   } catch (error) {
     console.error('Error fetching properties in bounds:', error);
-    // If we're in development mode and the API failed, return mock Toronto data
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Using mock Toronto data for development');
-      // This would be replaced with actual mock data in a real implementation
-      return mockTorontoProperties;
-    }
-    throw error;
+    // Fall back to mock data
+    console.log('Falling back to mock property data for bounds');
+    return mockProperties;
   }
 };
 
 // Location Scores API calls
 export const fetchLocationScores = async (filters = {}) => {
   try {
+    // If in mock mode, return mock data
+    if (isMockMode()) {
+      console.log('Using mock location score data');
+      return mockLocationScores;
+    }
+
     const params = new URLSearchParams();
 
     // Add filters to query params if they exist
@@ -75,22 +109,41 @@ export const fetchLocationScores = async (filters = {}) => {
     return response.data;
   } catch (error) {
     console.error('Error fetching location scores:', error);
-    throw error;
+    // Fall back to mock data
+    console.log('Falling back to mock location score data');
+    return mockLocationScores;
   }
 };
 
 export const fetchLocationScoreById = async (id) => {
   try {
+    // If in mock mode, find the location score in mock data
+    if (isMockMode()) {
+      console.log('Using mock location score data for single score');
+      const score = mockLocationScores.find((s) => s.id === id);
+      if (score) return score;
+      throw new Error('Location score not found in mock data');
+    }
+
     const response = await apiClient.get(`/location-scores/${id}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching location score with id ${id}:`, error);
+    // Try to find the score in mock data as fallback
+    const score = mockLocationScores.find((s) => s.id === id);
+    if (score) return score;
     throw error;
   }
 };
 
 export const fetchLocationScoresInBounds = async (bounds) => {
   try {
+    // If in mock mode, return all mock data
+    if (isMockMode()) {
+      console.log('Using mock location score data for bounds');
+      return mockLocationScores;
+    }
+
     const { southLat, northLat, westLng, eastLng } = bounds;
     const response = await apiClient.get('/location-scores/bounds', {
       params: { southLat, northLat, westLng, eastLng },
@@ -98,13 +151,21 @@ export const fetchLocationScoresInBounds = async (bounds) => {
     return response.data;
   } catch (error) {
     console.error('Error fetching location scores in bounds:', error);
-    throw error;
+    // Fall back to mock data
+    console.log('Falling back to mock location score data for bounds');
+    return mockLocationScores;
   }
 };
 
 // Filter-based API calls
 export const fetchPropertiesByMetric = async (metric, minValue) => {
   try {
+    // If in mock mode, filter mock data
+    if (isMockMode()) {
+      console.log(`Using mock data for properties by ${metric}`);
+      return mockProperties.filter((prop) => prop[metric] >= minValue);
+    }
+
     let endpoint = '/properties/filter';
     let paramName = '';
 
@@ -127,12 +188,25 @@ export const fetchPropertiesByMetric = async (metric, minValue) => {
     return response.data;
   } catch (error) {
     console.error(`Error fetching properties by ${metric}:`, error);
-    throw error;
+    // Filter mock data as fallback
+    console.log(`Falling back to mock data for properties by ${metric}`);
+    return mockProperties.filter((prop) => prop[metric] >= minValue);
   }
 };
 
 export const addProperty = async (propertyData) => {
   try {
+    // If in mock mode, just return the property data with an ID
+    if (isMockMode()) {
+      console.log('Mocking add property');
+      return {
+        ...propertyData,
+        id: mockProperties.length + 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
     const response = await apiClient.post('/properties', propertyData);
     return response.data;
   } catch (error) {
@@ -143,6 +217,16 @@ export const addProperty = async (propertyData) => {
 
 export const updateProperty = async (id, propertyData) => {
   try {
+    // If in mock mode, return updated property data
+    if (isMockMode()) {
+      console.log('Mocking update property');
+      return {
+        ...propertyData,
+        id,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
     const response = await apiClient.put(`/properties/${id}`, propertyData);
     return response.data;
   } catch (error) {
@@ -153,6 +237,12 @@ export const updateProperty = async (id, propertyData) => {
 
 export const deleteProperty = async (id) => {
   try {
+    // If in mock mode, return success
+    if (isMockMode()) {
+      console.log('Mocking delete property');
+      return true;
+    }
+
     await apiClient.delete(`/properties/${id}`);
     return true;
   } catch (error) {
@@ -160,54 +250,6 @@ export const deleteProperty = async (id) => {
     throw error;
   }
 };
-
-// Mock data for development - could be expanded in a real implementation
-const mockTorontoProperties = [
-  {
-    id: 1,
-    address: '35 Balmuto Street, Unit 1807',
-    city: 'Toronto',
-    state: 'ON',
-    zipCode: 'M4Y 0A3',
-    bedrooms: 1,
-    bathrooms: 1,
-    squareFeet: 550,
-    yearBuilt: 2005,
-    listPrice: 699000.0,
-    status: 'Active',
-    latitude: 43.6698,
-    longitude: -79.3863,
-    capRate: 2.85,
-    appreciationRate: 4.2,
-    cashOnCashReturn: 4.3,
-    monthlyRent: 2500.0,
-    yearlyExpenses: 9800.0,
-    imageUrl: 'https://example.com/images/35-balmuto.jpg',
-    description: 'Elegant 1-bedroom condo in the heart of downtown Toronto.',
-  },
-  {
-    id: 2,
-    address: '12 York Street, Unit 5601',
-    city: 'Toronto',
-    state: 'ON',
-    zipCode: 'M5J 0A9',
-    bedrooms: 2,
-    bathrooms: 2,
-    squareFeet: 850,
-    yearBuilt: 2016,
-    listPrice: 1250000.0,
-    status: 'Active',
-    latitude: 43.6416,
-    longitude: -79.3808,
-    capRate: 2.45,
-    appreciationRate: 5.1,
-    cashOnCashReturn: 3.8,
-    monthlyRent: 3800.0,
-    yearlyExpenses: 16200.0,
-    imageUrl: 'https://example.com/images/12-york.jpg',
-    description: 'Luxurious 2-bedroom, 2-bathroom condo in Ice Condos.',
-  },
-];
 
 export default {
   fetchProperties,

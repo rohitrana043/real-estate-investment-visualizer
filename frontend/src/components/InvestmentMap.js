@@ -23,38 +23,105 @@ L.Icon.Default.mergeOptions({
 });
 
 // Component to track and preserve map view (zoom and center)
-const MapViewController = ({ onViewChange }) => {
+const MapViewController = ({
+  onViewChange,
+  selectedProperty,
+  mapRef,
+  activeMetric,
+  isMobile,
+}) => {
   const map = useMap();
+  const prevMetricRef = useRef(activeMetric);
+  const viewStateRef = useRef(null);
+
+  // Store map reference
+  useEffect(() => {
+    mapRef.current = map;
+  }, [map, mapRef]);
 
   // Track map view changes
   useMapEvents({
     zoomend: () => {
+      // Save current view state
+      viewStateRef.current = {
+        center: map.getCenter(),
+        zoom: map.getZoom(),
+      };
+
       if (onViewChange) {
-        onViewChange({
-          center: map.getCenter(),
-          zoom: map.getZoom(),
-        });
+        onViewChange(viewStateRef.current);
       }
     },
     moveend: () => {
+      // Save current view state
+      viewStateRef.current = {
+        center: map.getCenter(),
+        zoom: map.getZoom(),
+      };
+
       if (onViewChange) {
-        onViewChange({
-          center: map.getCenter(),
-          zoom: map.getZoom(),
-        });
+        onViewChange(viewStateRef.current);
       }
     },
   });
+
+  // Effect to zoom to selected property
+  useEffect(() => {
+    if (selectedProperty && map) {
+      // Fly to selected property with current zoom level or minimum of 15
+      map.flyTo(
+        [selectedProperty.latitude, selectedProperty.longitude],
+        Math.max(map.getZoom(), 15), // Use current zoom or minimum of 15, whichever is higher
+        {
+          animate: true,
+          duration: 1, // Fast animation
+        }
+      );
+    }
+  }, [selectedProperty, map]);
+
+  // Effect to preserve zoom/center when metric changes
+  useEffect(() => {
+    if (prevMetricRef.current !== activeMetric && viewStateRef.current) {
+      // Use a short timeout to ensure the view is restored after the metric change is processed
+      const timeoutId = setTimeout(() => {
+        if (map && viewStateRef.current) {
+          map.setView(viewStateRef.current.center, viewStateRef.current.zoom, {
+            animate: false,
+          });
+        }
+      }, 50);
+
+      return () => clearTimeout(timeoutId);
+    }
+
+    prevMetricRef.current = activeMetric;
+  }, [activeMetric, map]);
 
   return null;
 };
 
 // Component to update the heatmap when data changes
-const HeatmapLayer = ({ locationScores, activeMetric, showHeatmap }) => {
+const HeatmapLayer = ({
+  locationScores,
+  activeMetric,
+  showHeatmap,
+  mapRef,
+}) => {
   const map = useMap();
   const heatLayerRef = useRef(null);
+  const prevMetricRef = useRef(activeMetric);
+  const viewStateRef = useRef(null);
 
   useEffect(() => {
+    // Before changing heatmap layer, store current view state
+    if (prevMetricRef.current !== activeMetric && map) {
+      viewStateRef.current = {
+        center: map.getCenter(),
+        zoom: map.getZoom(),
+      };
+    }
+
     // Remove existing heat layer if it exists
     if (heatLayerRef.current) {
       map.removeLayer(heatLayerRef.current);
@@ -95,14 +162,32 @@ const HeatmapLayer = ({ locationScores, activeMetric, showHeatmap }) => {
           gradient: { 0.4: 'blue', 0.65: 'yellow', 1: 'red' },
         }).addTo(map);
       }
+
+      // If metric changed, restore the view after a short delay
+      if (prevMetricRef.current !== activeMetric && viewStateRef.current) {
+        const timeoutId = setTimeout(() => {
+          if (map && viewStateRef.current && mapRef.current) {
+            map.setView(
+              viewStateRef.current.center,
+              viewStateRef.current.zoom,
+              { animate: false }
+            );
+          }
+        }, 50);
+
+        return () => clearTimeout(timeoutId);
+      }
     }
+
+    // Update previous metric ref
+    prevMetricRef.current = activeMetric;
 
     return () => {
       if (heatLayerRef.current) {
         map.removeLayer(heatLayerRef.current);
       }
     };
-  }, [map, locationScores, activeMetric, showHeatmap]);
+  }, [map, locationScores, activeMetric, showHeatmap, mapRef]);
 
   return null;
 };
@@ -114,16 +199,23 @@ const InvestmentMap = ({
   onPropertySelect,
   selectedProperty,
   showHeatmap = true,
+  isMobile = false,
 }) => {
   // Default center on Toronto-GTA area
   const defaultCenter = [43.6532, -79.3832];
-  const defaultZoom = 14;
+  const defaultZoom = isMobile ? 13 : 14; // Slightly less zoom on mobile for better context
 
   // State to track current map view
   const [mapView, setMapView] = useState({
     center: defaultCenter,
     zoom: defaultZoom,
   });
+
+  // Ref to store map instance
+  const mapRef = useRef(null);
+
+  // Ref to preserve view when changing metrics
+  const preserveViewRef = useRef(null);
 
   // Format price as currency
   const formatPrice = (price) => {
@@ -132,6 +224,42 @@ const InvestmentMap = ({
       currency: 'USD',
       maximumFractionDigits: 0,
     }).format(price);
+  };
+
+  // Create custom icon based on property status and size appropriately for mobile
+  const createCustomIcon = (property) => {
+    const isActive = property.status === 'Active';
+    const isPending = property.status === 'Pending';
+    const isSelected = selectedProperty && selectedProperty.id === property.id;
+
+    let iconUrl;
+    if (isSelected) {
+      iconUrl =
+        'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png';
+    } else if (isActive) {
+      iconUrl =
+        'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png';
+    } else if (isPending) {
+      iconUrl =
+        'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
+    } else {
+      iconUrl =
+        'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+    }
+
+    // Adjust icon size for mobile
+    const iconSize = isMobile ? [20, 33] : [25, 41];
+    const iconAnchor = isMobile ? [10, 33] : [12, 41];
+
+    return new L.Icon({
+      iconUrl,
+      shadowUrl:
+        'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      iconSize: iconSize,
+      iconAnchor: iconAnchor,
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
   };
 
   const getLegendTitle = () => {
@@ -165,7 +293,20 @@ const InvestmentMap = ({
   };
 
   return (
-    <MapContainer center={mapView.center} zoom={mapView.zoom} className="map">
+    <MapContainer
+      center={mapView.center}
+      zoom={mapView.zoom}
+      className="map"
+      zoomControl={!isMobile} // Hide default zoom controls on mobile
+      attributionControl={!isMobile} // Hide attribution on mobile to save space
+      whenCreated={(map) => {
+        mapRef.current = map;
+        // Add zoom control to top right on mobile for better thumb access
+        if (isMobile) {
+          L.control.zoom({ position: 'topright' }).addTo(map);
+        }
+      }}
+    >
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -175,14 +316,23 @@ const InvestmentMap = ({
         locationScores={locationScores}
         activeMetric={activeMetric}
         showHeatmap={showHeatmap}
+        preserveViewRef={preserveViewRef}
+        mapRef={mapRef}
       />
 
-      <MapViewController onViewChange={setMapView} />
+      <MapViewController
+        onViewChange={setMapView}
+        selectedProperty={selectedProperty}
+        mapRef={mapRef}
+        activeMetric={activeMetric}
+        isMobile={isMobile}
+      />
 
       {properties.map((property) => (
         <Marker
           key={property.id}
           position={[property.latitude, property.longitude]}
+          icon={createCustomIcon(property)}
           eventHandlers={{
             click: () => {
               onPropertySelect(property);
@@ -206,7 +356,10 @@ const InvestmentMap = ({
               <div className="property-popup-address">{property.address}</div>
               <button
                 className="property-popup-button"
-                onClick={() => onPropertySelect(property)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPropertySelect(property);
+                }}
               >
                 View Details
               </button>

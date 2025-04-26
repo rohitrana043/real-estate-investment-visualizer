@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-const Header = ({ toggleSidebar, openSettings }) => {
+const Header = ({ toggleSidebar, openSettings, openFavorites, isMobile }) => {
   const location = useLocation();
 
   return (
@@ -11,6 +11,7 @@ const Header = ({ toggleSidebar, openSettings }) => {
         <span>iLocate</span>
       </div>
 
+      {/* Nav links only shown on desktop */}
       <div className="nav-links">
         <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
           Map View
@@ -21,29 +22,32 @@ const Header = ({ toggleSidebar, openSettings }) => {
         >
           Dashboard
         </Link>
+        <Link
+          to="/portfolio"
+          className={location.pathname === '/portfolio' ? 'active' : ''}
+        >
+          Portfolio
+        </Link>
+        <Link
+          to="/reports"
+          className={location.pathname === '/reports' ? 'active' : ''}
+        >
+          Reports
+        </Link>
       </div>
 
       <div className="header-right">
+        {/* Only show this text on desktop */}
         <span>Long-Term Inv | Toronto - GTA, ON | $0 | Unlimited</span>
 
-        <button className="header-button" onClick={toggleSidebar}>
-          <i className="fas fa-list"></i> List
-        </button>
-
-        <button className="header-button">
-          <i className="fas fa-heart"></i> Favorites
-        </button>
-
-        <button className="header-button">
-          <i className="fas fa-briefcase"></i> Portfolio
-        </button>
-
-        <button className="header-button">
-          <i className="fas fa-flag"></i> Report
-        </button>
-
-        <button className="header-button" onClick={openSettings}>
-          <i className="fas fa-cog"></i> Settings
+        {/* List button triggers sidebar on mobile */}
+        <button
+          className="header-button"
+          onClick={toggleSidebar}
+          aria-label="Toggle property list"
+        >
+          <i className="fas fa-list"></i>
+          {!isMobile && <span> List</span>}
         </button>
       </div>
     </div>
